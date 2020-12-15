@@ -1,21 +1,14 @@
-from datetime import datetime
-
-
 class WordSearch(object):
     def __init__(self, grid):
-        self.__ROW_LENGTH = int(len(grid) ** 0.5)  # Assuming it's a grid
-        self.__horizontals = grid
-        self.__row_width = int(len(grid) / self.__ROW_LENGTH)
-        start = datetime.now()
-        self.__verticals = ''.join(
-            [''.join([grid[j + i] for j in range(0, len(grid), self.__ROW_LENGTH)]) for i in range(self.__ROW_LENGTH)])
-        print("Init: ", datetime.now() - start)
+        self.__ROW_LENGTH = int(len(grid) ** 0.5)  # Intended to be fixed, but dynamically determined for testing
+        self.__horizontals = [grid[i:i + self.__ROW_LENGTH] for i in range(0, len(grid), self.__ROW_LENGTH)]
+        self.__verticals = [''.join([grid[j + i] for j in range(0, len(grid), self.__ROW_LENGTH)]) for i in
+                            range(self.__ROW_LENGTH)]
         # Verticals exists to make searching for the string easier.
         # Using list comprehension over a nested loop as it's significantly faster
 
     def is_present(self, word):
-        return word in self.__horizontals or word in self.__verticals
-        # TODO: Currently this would take a word that wraps over the edge
+        return any(word in line for line in self.__horizontals) or any(word in line for line in self.__verticals)
 
 
 """
