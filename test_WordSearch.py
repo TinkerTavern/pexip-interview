@@ -31,7 +31,7 @@ def multi_processing_search(ws, words_to_find):
 
 
 def find_words(ws, list):
-    output = []
+    output = []  # Using array here simply for simplicity in testing
     for word in list:
         if ws.is_present(word):
             output.append("found {}".format(word))
