@@ -1,11 +1,36 @@
+import multiprocessing
+from datetime import datetime
+
+
 class WordSearch(object):
     def __init__(self, grid):
-        self.__ROW_LENGTH = int(len(grid) ** 0.5)  # Intended to be fixed, but dynamically determined for testing
+        self.__ROW_LENGTH = int(
+            len(grid) ** 0.5)  # Intended to be a fixed value, but is dynamically determined for testing
+        start = datetime.now()
         self.__horizontals = [grid[i:i + self.__ROW_LENGTH] for i in range(0, len(grid), self.__ROW_LENGTH)]
-        self.__verticals = [''.join([grid[j + i] for j in range(0, len(grid), self.__ROW_LENGTH)]) for i in range(self.__ROW_LENGTH)]
+        self.__verticals = [''.join([grid[i + j] for i in range(0, len(grid), self.__ROW_LENGTH)]) for j in
+                            range(self.__ROW_LENGTH)]
+        print("Linear = ", datetime.now() - start)
+        self.__horizontals = []
+        self.__verticals = []
+        start = datetime.now()
+        process1 = multiprocessing.Process(target=self.determine_horizontals, args=(grid,))
+        process2 = multiprocessing.Process(target=self.determine_verticals, args=(grid,))
+        process1.start()
+        process2.start()
+        process1.join()
+        process2.join()
+        print("Parallel = ", datetime.now() - start)
 
     def is_present(self, word):
         return any(word in line for line in self.__horizontals) or any(word in line for line in self.__verticals)
+
+    def determine_horizontals(self, grid):
+        self.__horizontals = [grid[i:i + self.__ROW_LENGTH] for i in range(0, len(grid), self.__ROW_LENGTH)]
+
+    def determine_verticals(self, grid):
+        self.__verticals = [''.join([grid[i + j] for i in range(0, len(grid), self.__ROW_LENGTH)]) for j in
+                            range(self.__ROW_LENGTH)]
 
 
 """
