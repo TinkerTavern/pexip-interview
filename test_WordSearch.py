@@ -1,40 +1,33 @@
+import multiprocessing
 import random
 import string
-import threading
 from datetime import datetime
 from unittest import TestCase
 
 from WordSearch import WordSearch
 
 
-def do_search(grid, words_to_find):
-    ws = WordSearch(grid)
+def do_search(ws, words_to_find):
     output = []
-    start_present = datetime.now()
     for word in words_to_find:
         if ws.is_present(word):
             output.append("found {}".format(word))
-    print("Standard = ", datetime.now() - start_present)
     return output
 
 
-def do_search_multi(grid, words_to_find):
-    n = 16  # no of threads
-    size = int(len(words_to_find) / n)
-    ws = WordSearch(grid)
+def do_search_multi_proc(ws, words_to_find):
+    processors = 32  # No. of Processes (in this case, no. of system threads)
+    subsection_size = int(len(words_to_find) / processors)
+    processes = []
+    for i in range(processors):
+        arr = words_to_find[i * subsection_size:(i + 1) * subsection_size]
 
-    threads = []
-    start = datetime.now()
-    for i in range(n):
-        arr = words_to_find[i * size:(i + 1) * size]
+        process = multiprocessing.Process(target=find_words, args=(ws, arr,))
+        process.start()
+        processes.append(process)
 
-    thr = threading.Thread(target=find_words, args=(ws, arr,))
-    thr.start()
-    threads.append(thr)
-
-    for thread in threads:
+    for thread in processes:
         thread.join()
-    print("Threaded = ", datetime.now() - start)
 
 
 def find_words(ws, list):
@@ -52,42 +45,51 @@ def correct_output(found_words):
     return output
 
 
+def speed_test_sample(grid_size, max_word_length, no_of_words):
+    letters = string.ascii_lowercase
+    grid = ''.join(random.choice(letters) for _ in range(grid_size))
+    words_to_find = [(''.join(random.choice(letters) for _ in range(random.randint(1, max_word_length)))) for _ in
+                     range(no_of_words)]
+    ws = WordSearch(grid)
+
+    start = datetime.now()
+    do_search(ws, words_to_find)
+    single_time = datetime.now() - start
+
+    start = datetime.now()
+    do_search_multi_proc(ws, words_to_find)
+    multi_time = datetime.now() - start
+
+    return multi_time, single_time
+
+
 class TestWordSearch(TestCase):
 
-    def test_basic(self):
-        grid = "word1gwrjk" \
-               "word2sod5k" \
-               "jsdkjwrrd1" \
-               "jsdkjwdrd1" \
-               "jsdkjw3rd1"
-        words_to_find = ["word1", "word2", "word3", "thing"]
-        self.assertEquals(do_search(grid, words_to_find), correct_output(["word1", "word2", "word3"]))
+    def test_basic_functionality(self):
+        grid = "catsdgdrjk" \
+               "wordtsodtk" \
+               "jsdkjwgrdt" \
+               "jsdkjwdrdt" \
+               "jsdkjwtrdt" \
+               "aajgyhksdg" \
+               "jsdhellodt" \
+               "jsdkjwtthi" \
+               "ngdkjwtrdt" \
+               "jsstuffrdt"
+        words_to_find = ["cats", "dog", "hello", "thing", "dynamic"]  # 'thing' is there, but looped over 2 lines
+        ws = WordSearch(grid)
+        self.assertEquals(do_search(ws, words_to_find), correct_output(["cats", "dog", "hello"]))
 
-    def test_small(self):
-        letters = string.ascii_lowercase
-        grid = ''.join(random.choice(letters) for _ in range(10000))
-        words_to_find = [(''.join(random.choice(letters) for _ in range(random.randint(1, 12)))) for _ in
-                         range(10000)]
-        start = datetime.now()
-        self.assertEquals(do_search(grid, words_to_find), correct_output([""]))
-        print(datetime.now() - start)
+    def test_speed_small_sample(self):
+        multi_time, single_time = speed_test_sample(10000, 12, 10000)
+        self.assertLess(single_time, multi_time,
+                        "Single threaded processing method should be faster for smaller dataset")
 
-    def test_med(self):
-        letters = string.ascii_lowercase
-        grid = ''.join(random.choice(letters) for _ in range(1000000))
-        words_to_find = [(''.join(random.choice(letters) for _ in range(random.randint(1, 15)))) for _ in
-                         range(100000)]
-        start = datetime.now()
-        do_search_multi(grid, words_to_find), correct_output([""])
-        self.assertEquals(do_search(grid, words_to_find), correct_output([""]))
-        print(datetime.now() - start)
+    def test_speed_med_sample(self):
+        multi_time, single_time = speed_test_sample(1000000, 15, 100000)
+        self.assertLess(multi_time, single_time, "Multi processing method should be faster for a medium dataset")
 
-    def test_full(self):
-        letters = string.ascii_lowercase
-        grid = ''.join(random.choice(letters) for _ in range(100000000))  # 10^4 in each direction
-        words_to_find = [(''.join(random.choice(letters) for _ in range(random.randint(1, 24)))) for _ in
-                         range(1000000)]
-        print("Start testing")
-        start = datetime.now()
-        self.assertEquals(do_search(grid, words_to_find), correct_output([""]))
-        print(datetime.now() - start)
+    # Note: This test can take quite a while, particularly for the non multi threaded approach
+    def test_speed_full_sample(self):
+        multi_time, single_time = speed_test_sample(100000000, 24, 1000000)
+        self.assertLess(multi_time, single_time, "Multi processing method should be faster for the largest dataset")
